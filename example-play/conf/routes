@@ -1,0 +1,4 @@
+GET     /scala-app                  controllers.ScalaApp.apply()
+GET     /scala-app/long             controllers.ScalaApp.long()
+GET     /scala-app/exception        controllers.ScalaApp.exception()
+GET     /scala-app/async            controllers.ScalaApp.async()
