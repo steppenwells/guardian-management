@@ -1,8 +1,10 @@
 import java.util.jar._
 
+organization in ThisBuild := "com.gu"
+
 scalaVersion in ThisBuild := "2.10.0"
 
-organization in ThisBuild := "com.gu"
+crossScalaVersions in ThisBuild := Seq("2.9.2", "2.10.0")
 
 releaseSettings
 

@@ -7,11 +7,10 @@ This library provides standard management pages and makes it easy to create new
 app-specific ones in order to fulfill those criteria. 
 
 The library is  intended to be web framework agnostic and currently has support for 
-anything using the servlet API, the Play framework and as a standalone internal server
-running on a separate port. A small adapter library
+anything using the servlet API, the Play framework (provided in [guardian-management-play](https://github.com/guardian/guardian-management-play))
+and as a standalone internal server running on a separate port. A small adapter library
 for the request and response abstractions, blatantly inspired by/ripped off from 
 [lift](http://www.liftweb.net), needs to be added to support other frameworks.
-
 
 
 Getting Started (Servlet API)
@@ -121,51 +120,6 @@ and a more complex page that supports POSTs is
 [the switchboard](https://github.com/guardian/guardian-management/blob/master/management/src/main/scala/com/gu/management/switchables.scala).
 
 
-
-Getting Started (Play Framework)
-===============
-
-Add the dependency to your build
------------------------------------
-
-In your build.sbt for sbt 0.10:
-
-    resolvers += "Guardian Github Snapshots" at "http://guardian.github.com/maven/repo-releases"
-    libraryDependencies += "com.gu" %% "management-play" % "5.21"
-
-As of 5.7, Scala 2.8.1 and 2.9.0-1 are no longer supported. Upgrade your project
-to Scala 2.9.1.
-
-Look at the example!
------------------------
-
-See example commit https://github.com/guardian/guardian-management/commit/f801e8d0
-
-The [example project](https://github.com/guardian/guardian-management/tree/master/example-play) has
-management routes set up and uses some switches and timing metrics.
-
-    $ git clone git@github.com:guardian/guardian-management.git
-    $ cd guardian-management
-    $ ./sbt010
-    > project example-play
-    > run
-
-Try the following URLs locally:
-
- * http://localhost:9000/scala-app
- * http://localhost:18080/management
- * http://localhost:18080/management/switchboard
-
-Also, enable the `take-it-down` switch and retry `/scala-app`.
-
-The application also has very simple custom management page, but the best thing to do if you want to write your
-own management pages is to look at how the pre-defined ones are implemented: a simple readonly page to look at is
-the
-[status page](https://github.com/guardian/guardian-management/blob/master/management/src/main/scala/com/gu/management/StatusPage.scala),
-and a more complex page that supports POSTs is
-[the switchboard](https://github.com/guardian/guardian-management/blob/master/management/src/main/scala/com/gu/management/switchables.scala).
-
-
 Getting started (standalone)
 ============================
 
@@ -215,49 +169,6 @@ ManagementServer.start(handler)
 // shutdown to unregister the port binding properly
 ManagementServer.shutdown()
 ```
-
-Using the internal server in Play 2
-===================================
-
-Configure your dependencies
----------------------------
-
-    resolvers += "Guardian Github Snapshots" at "http://guardian.github.com/maven/repo-releases"
-    libraryDependencies += "com.gu" %% "management-play" % "5.21"
-
-Add to the play plugins file
-----------------------------
-
-Add the following line to conf/play.plugins (create it if it doesn't exist):
-
-    1000:com.gu.management.play.InternalManagementPlugin
-
-Bind the management pages
--------------------------
-
-The plugin locates the pages and application name by convention.
-
-Create a scala Object called conf.Management that mixes in the ManagementPageManifest trait to
-provide the list of pages and your application name to the plugin:
-
-```scala
-package conf
-
-object Management extends ManagementPageManifest {
-  val applicationName = "your-application-name"
-
-  lazy val pages = List(
-    new ManifestPage,
-    new HealthcheckManagementPage,
-    new Switchboard(applicationName, Switches.all),
-    StatusPage(applicationName, Metrics.all),
-    new LogbackLevelPage(applicationName)
-  )
-}
-```
-
-If there is a reason you can't name your file conf.Management, you can override it
-by setting management.manifestobject in application.conf.
 
 
 Providing metrics for GANGLIA
