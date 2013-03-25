@@ -1,6 +1,6 @@
 package com.gu.management
 
-import management.ManagementFactory
+import management.{ MemoryPoolMXBean, ManagementFactory }
 import collection.JavaConversions._
 import org.slf4j.{ Logger, LoggerFactory }
 
@@ -66,15 +66,16 @@ object JvmMetrics {
 
   lazy val memoryUsage =
     try {
-      ManagementFactory.getMemoryPoolMXBeans().toList map { memPool =>
-        val memoryUsage = memPool.getCollectionUsage
-        new GaugeMetric(
+      ManagementFactory.getMemoryPoolMXBeans().toList flatMap { memPool: MemoryPoolMXBean =>
+        val memoryUsage = memPool.getUsage
+        if (memoryUsage == null) None
+        else Some(new GaugeMetric(
           group = "jvm",
           name = "%s memory usage".format(memPool.getName),
           title = "%s Memory Usage".format(memPool.getName),
-          description = "%s memory percentage of max value used".format(memPool.getName),
+          description = "%s memory usage as percentage of max value".format(memPool.getName),
           getValue = () => math.round(memoryUsage.getUsed.toFloat / memoryUsage.getMax * 100)
-        )
+        ))
       }
     } catch {
       case e: Exception =>
