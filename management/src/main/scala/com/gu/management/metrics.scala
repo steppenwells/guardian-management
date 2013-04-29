@@ -1,7 +1,8 @@
 package com.gu.management
 
-import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.{ AtomicReference, AtomicLong }
 import java.util.concurrent.Callable
+import collection.mutable
 
 case class Definition(group: String, name: String)
 
@@ -27,6 +28,7 @@ trait Metric {
   def group: String
   def name: String
   def asJson: StatusMetric
+  def json: Seq[StatusMetric]
 
   lazy val definition: Definition = Definition(group, name)
 }
@@ -42,6 +44,7 @@ trait AbstractMetric[T] extends Metric {
   val getValue: () => T
 
   def asJson: StatusMetric = StatusMetric(group, master map { _.definition }, name, `type`, title, description)
+  def json: Seq[StatusMetric] = List(asJson)
 }
 
 class GaugeMetric[T](
@@ -117,4 +120,48 @@ class TimingMetric(
 
 object TimingMetric {
   def empty = new TimingMetric("application", "Empty", "Empty", "Empty")
+}
+
+class ExtendedTimingMetric(override val group: String,
+    override val name: String,
+    override val title: String,
+    override val description: String,
+    override val master: Option[Metric] = None,
+    val percentiles: List[Int]) extends TimingMetric(group, name, title, description, master) {
+  val masterMetric = new TimingMetric(group, name, title, description)
+  val submetrics: Map[String, TimingMetric] = (percentiles map { pct: Int =>
+    val subname = name + "_" + pct
+    val subdesc = description + " (" + pct + "% percentile)"
+    subname -> new TimingMetric(group, subname, title, subdesc, Some(masterMetric))
+  }).toMap + (name -> masterMetric)
+
+  var storedMetrics = new AtomicReference(new mutable.MutableList[Long]())
+
+  /* For extended metrics, this is actually going to do the work */
+  //  def asJson = ???
+  override def recordTimeSpent(durationInMillis: Long) {
+    storedMetrics.get += durationInMillis
+    masterMetric.recordTimeSpent(durationInMillis)
+  }
+
+  def processMetrics() {
+    val metricList = storedMetrics.getAndSet(new mutable.MutableList[Long]())
+    println("Total " + metricList.size)
+    val sortedMetrics = metricList.sorted
+
+    percentiles foreach { pct =>
+      val offset = math.round(sortedMetrics.size * (pct / 100.0))
+      println("Recording only " + offset + " values")
+      val metric = submetrics(name + "_" + pct)
+      sortedMetrics.take(offset.toInt).foreach(metric.recordTimeSpent(_))
+    }
+  }
+
+  override def asJson = masterMetric.asJson
+
+  override def json = {
+    // Side Effect, update the submetrics appropriately
+    processMetrics()
+    List(masterMetric.asJson) ::: submetrics.values.map(_.asJson).toList
+  }
 }
